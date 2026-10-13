@@ -1,4 +1,3 @@
-
 package com.anurag.appointment.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
@@ -30,22 +29,17 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Locale;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-
     @Bean
     SecretKey jwtSecretKey(@Value("${app.jwt.secret}") String secret) {
         byte[] key = secret.getBytes(StandardCharsets.UTF_8);
-
         if (key.length < 32) {
-            throw new IllegalStateException(
-                    "JWT_SECRET must contain at least 32 bytes");
+            throw new IllegalStateException("JWT_SECRET must contain at least 32 bytes");
         }
-
         return new SecretKeySpec(key, "HmacSHA256");
     }
 
@@ -55,18 +49,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(
-            SecretKey jwtSecretKey,
-            @Value("${app.jwt.issuer}") String issuer) {
-
-        NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withSecretKey(jwtSecretKey)
+    JwtDecoder jwtDecoder(SecretKey jwtSecretKey, @Value("${app.jwt.issuer}") String issuer) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSecretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-
-        decoder.setJwtValidator(
-                JwtValidators.createDefaultWithIssuer(issuer));
-
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
         return decoder;
     }
 
@@ -77,35 +64,23 @@ public class SecurityConfig {
 
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtAuthenticationConverter converter =
-                new JwtAuthenticationConverter();
-
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter((Jwt jwt) ->
-                List.of(new SimpleGrantedAuthority(
-                        "ROLE_" + jwt.getClaimAsString("role")
-                                .toUpperCase(Locale.ROOT))));
-
+                java.util.List.of(new SimpleGrantedAuthority(
+                        "ROLE_" + jwt.getClaimAsString("role").toUpperCase(java.util.Locale.ROOT))));
         return converter;
     }
 
     @Bean
     CorsConfigurationSource corsConfigurationSource(
             @Value("${app.cors.allowed-origin}") String allowedOrigin) {
-
         CorsConfiguration configuration = new CorsConfiguration();
-
         configuration.setAllowedOrigins(List.of(allowedOrigin));
-        configuration.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(false);
-        configuration.setMaxAge(3600L);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-
         return source;
     }
 
@@ -113,30 +88,17 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationConverter jwtConverter,
-            CorsConfigurationSource corsConfigurationSource)
-            throws Exception {
-
+            CorsConfigurationSource corsConfigurationSource) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(
-                        corsConfigurationSource))
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(
-                                HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(
-                                "/api/auth/**", "/", "/error").permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/services",
-                                "/api/services/**",
-                                "/api/slots/available").permitAll()
+                        .requestMatchers("/api/auth/**", "/", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/services", "/api/services/**", "/api/slots/available").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
-                        .jwt(jwt -> jwt
-                                .jwtAuthenticationConverter(jwtConverter)))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
                 .build();
     }
 }
